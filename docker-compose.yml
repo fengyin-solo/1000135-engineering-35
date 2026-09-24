@@ -2,9 +2,16 @@ services:
   backend:
     build: ./backend
     ports:
-      - "8000:8000"
+      - "${APP_PORT:-8000}:${APP_PORT:-8000}"
     environment:
-      - APP_ENV=local
+      # 本地开发与容器部署共用同一份配置来源：仓库根目录 .env（compose 自动注入变量）
+      # 这里列出的默认值与代码内置默认值一致，未配置时行为与改造前相同
+      APP_NAME: ${APP_NAME:-冷链物流温控运营平台}
+      APP_ENV: ${APP_ENV:-local}
+      APP_PORT: ${APP_PORT:-8000}
+      APP_ALLOWED_ORIGINS: ${APP_ALLOWED_ORIGINS:-http://127.0.0.1:5173,http://localhost:5173}
+      PAGE_SIZE_DEFAULT: ${PAGE_SIZE_DEFAULT:-20}
+      PAGE_SIZE_MAX: ${PAGE_SIZE_MAX:-200}
   frontend:
     build: ./frontend
     ports:

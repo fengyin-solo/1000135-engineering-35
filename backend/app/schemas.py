@@ -5,6 +5,8 @@ from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, Field
 
+from app.config import settings
+
 T = TypeVar("T")
 
 
@@ -12,7 +14,7 @@ class PageResult(BaseModel, Generic[T]):
     items: list[T]
     total: int
     page: int = 1
-    size: int = 20
+    size: int = settings.page_size_default
 
 
 class ActionResult(BaseModel):

@@ -24,7 +24,17 @@
 
 ## 启动
 
-### 后端
+依赖要求：后端 Python 3.12+，前端 Node.js 20+。
+
+### 一键安装并启动
+
+```bash
+make install   # 分别创建 backend/.venv 并安装 Python 依赖、安装前端 npm 依赖
+make backend   # 启动后端（等价于 cd backend && ./run.sh）
+make frontend  # 启动前端
+```
+
+### 后端（手动）
 
 ```bash
 cd backend
@@ -32,9 +42,13 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 ./run.sh
 ```
 
+`./run.sh` 会自动创建虚拟环境、安装 `requirements.txt` 里的依赖，随后校验运行配置并启动
+uvicorn；直接运行
+`uvicorn app.main:app --host 127.0.0.1 --port 8000` 的原有命令仍然可用。
+
 健康检查：`curl http://127.0.0.1:8000/api/health`
 
-### 前端
+### 前端（手动）
 
 ```bash
 cd frontend
@@ -43,7 +57,48 @@ npm run dev
 ```
 
 前端默认监听 `http://127.0.0.1:5173/`，dev server 不会自动打开浏览器，
-需要自己访问。`/api` 由 vite 代理到后端 `http://127.0.0.1:8000`。
+需要自己访问。`/api` 由 vite 代理到后端 `http://127.0.0.1:8000`（可用
+`VITE_PROXY_TARGET` 覆盖代理目标，见 `frontend/vite.config.ts`）。
+
+### Docker Compose
+
+```bash
+docker compose up --build
+```
+
+### 运行配置
+
+本地开发与容器部署共用同一份配置来源：仓库根目录的 `.env` 文件与进程环境变量。
+环境变量优先于 `.env`，两者都不设置时沿用内置默认值。复制示例文件即可开始：
+
+```bash
+cp .env.example .env
+```
+
+| 变量 | 说明 | 默认值 |
+| --- | --- | --- |
+| `APP_ENV` | 运行环境标识（如 `local`/`staging`/`prod`），会打印在启动日志里 | `local` |
+| `APP_HOST` | 监听地址（容器内固定为 `0.0.0.0`） | `127.0.0.1` |
+| `APP_PORT` | 监听端口，需为 1~65535 的整数 | `8000` |
+| `APP_ALLOWED_ORIGINS` | 允许的跨域来源，多个用英文逗号分隔，如 `http://localhost:5173,http://localhost:8080` | `http://127.0.0.1:5173,http://localhost:5173` |
+| `PAGE_SIZE_DEFAULT` | 列表接口不传 `size` 时的默认每页条数 | `20` |
+| `PAGE_SIZE_MAX` | 每页条数上限，接口对超过上限的请求返回 400 | `200` |
+
+启动时会打印一行业务名、运行环境、监听地址、跨域来源数量与分页参数，方便确认当前
+生效的配置，例如：
+
+```text
+冷链物流温控运营平台 启动：运行环境=local，监听 http://127.0.0.1:8000，允许跨域来源 2 个（http://127.0.0.1:5173、http://localhost:5173），分页默认 20 条/上限 200 条，配置来源=/workspace/.env
+```
+
+任一配置缺失（空值）或格式非法（端口不是整数、跨域来源不是合法 URL、
+`PAGE_SIZE_DEFAULT` 大于 `PAGE_SIZE_MAX` 等）时，服务不会启动，启动脚本会直接打印
+原因并注明对应默认值，例如：
+
+```text
+启动失败：运行配置校验未通过：环境变量 APP_PORT=abc 不是整数；不设置它时默认值为 8000
+```
+
 
 ## 业务模块
 

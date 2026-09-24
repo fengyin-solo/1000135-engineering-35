@@ -1,9 +1,13 @@
 """冷链物流温控运营平台 后端服务入口。
 
 启动：uvicorn app.main:app --host 127.0.0.1 --port 8000
+（host / port 也可由 APP_HOST / APP_PORT 配置，见 run.sh 与 backend/Dockerfile）
 健康检查：GET /api/health
 """
 from __future__ import annotations
+
+import contextlib
+import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,7 +16,17 @@ from app.config import settings
 from app.routers import ROUTERS
 from app.store import store
 
-app = FastAPI(title="冷链物流温控运营平台", version="1.0.0")
+logger = logging.getLogger("uvicorn.error")
+
+
+@contextlib.asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # 启动时把生效配置打出来：本地与容器、不同环境跑起来能一眼看出差异
+    logger.info(settings.startup_line())
+    yield
+
+
+app = FastAPI(title=settings.app_name, version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
