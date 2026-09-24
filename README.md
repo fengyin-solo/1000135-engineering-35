@@ -17,9 +17,47 @@
 ├── backend/                  FastAPI（Python） 后端
 │   ├── app/routers/          每个业务模块一组接口
 │   ├── app/services/         业务规则与状态流转
+│   ├── app/config.py         运行配置：读环境变量，默认值兜底
+│   ├── .env.example          可配置项清单（复制为 .env 使用）
 │   └── app/store.py          内存数据仓库与示例数据
 ├── .gitignore
 └── docker-compose.yml
+```
+
+## 依赖安装
+
+- 后端：Python 3.10+（推荐 3.12，与 `backend/Dockerfile` 一致）
+- 前端：Node 20（与 `frontend/Dockerfile` 一致）
+
+```bash
+make install
+# 等价于：
+# cd backend && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+# cd frontend && npm install
+```
+
+## 运行配置
+
+后端启动时从环境变量读取配置，本地开发可以写在 `backend/.env`（参考
+`backend/.env.example`），容器用 `-e` 或 compose 的 `environment` 传入——
+本地与部署共用同一份配置来源。未设置的项使用 `app/config.py` 里的默认值，
+不配置任何东西时行为与之前完全一致。
+
+| 环境变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `APP_ENV` | `local` | 运行环境标识，打印在启动日志里 |
+| `HOST` | `127.0.0.1` | 监听地址；容器里由 Dockerfile 固定为 `0.0.0.0` |
+| `PORT` | `8000` | 监听端口，需在 1-65535 之间 |
+| `ALLOWED_ORIGINS` | `http://127.0.0.1:5173,http://localhost:5173` | 允许的跨域来源，逗号分隔 |
+| `PAGE_SIZE_DEFAULT` | `20` | 列表接口默认每页条数 |
+| `PAGE_SIZE_MAX` | `200` | 列表接口每页上限，不能小于默认值 |
+| `APP_NAME` | `冷链物流温控运营平台` | 应用名称 |
+
+取值不合法（例如 `PORT` 不是数字、`PAGE_SIZE_MAX` 小于 `PAGE_SIZE_DEFAULT`）时
+启动直接失败，并说明是哪一项、取到了什么值。启动成功时日志会打印生效配置：
+
+```text
+[config] 运行环境=local 监听=127.0.0.1:8000 允许跨域来源=http://127.0.0.1:5173、http://localhost:5173 分页默认=20 分页上限=200
 ```
 
 ## 启动
@@ -29,8 +67,10 @@
 ```bash
 cd backend
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-./run.sh
+./run.sh          # 等价于 python -m app，端口等取值来自上面的配置
 ```
+
+兼容旧命令：`uvicorn app.main:app --host 127.0.0.1 --port 8000`。
 
 健康检查：`curl http://127.0.0.1:8000/api/health`
 
@@ -43,7 +83,17 @@ npm run dev
 ```
 
 前端默认监听 `http://127.0.0.1:5173/`，dev server 不会自动打开浏览器，
-需要自己访问。`/api` 由 vite 代理到后端 `http://127.0.0.1:8000`。
+需要自己访问。`/api` 由 vite 代理到后端 `http://127.0.0.1:8000`；
+后端改了端口时同步指定 `VITE_PROXY_TARGET=http://127.0.0.1:<端口> npm run dev`。
+
+### 容器
+
+```bash
+docker compose up --build
+```
+
+后端配置通过 compose 的 `environment` 传入（如 `APP_ENV`），与本地同源；
+改端口时同步调整 `ports` 映射与 `PORT`。
 
 ## 业务模块
 

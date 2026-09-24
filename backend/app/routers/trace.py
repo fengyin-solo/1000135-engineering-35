@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
+from app.config import settings
 from app.schemas import ActionResult, EntryPayload, PageResult
 from app.services.trace import TraceService
 
@@ -21,11 +22,11 @@ def list_entries(
     keyword: str | None = Query(default=None, description="按追溯码检索"),
     status: str | None = Query(default=None, description="待关联、已关联、已发布、已撤回"),
     page: int = 1,
-    size: int = 20,
+    size: int = settings.page_size_default,
 ) -> PageResult[dict]:
     """按追溯码与状态过滤批次追溯列表；没有数据时返回空页，不报错。"""
-    if size > 200:
-        raise HTTPException(status_code=400, detail="每页最多 200 条，请缩小分页范围")
+    if size > settings.page_size_max:
+        raise HTTPException(status_code=400, detail=f"每页最多 {settings.page_size_max} 条，请缩小分页范围")
     items, total = service.list_entries(keyword=keyword, status=status, page=page, size=size)
     return PageResult(items=items, total=total, page=page, size=size)
 
